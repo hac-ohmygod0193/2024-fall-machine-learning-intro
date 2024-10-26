@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from preprocessor import Preprocessor
-from model import MLPClassifier, LogisticRegressionClassifier, activation
+from model import MLPClassifier, activation, optimizer
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, matthews_corrcoef, roc_auc_score
 import os
 
@@ -61,7 +61,7 @@ def main():
     train_X, train_y, test_X, test_y = dataPreprocessing(0.1) # train, test data should not contain index
 
     #model = LogisticRegressionClassifier() # remember to change the hyperparameter
-    model = MLPClassifier(layers= [20,10,5], activate_function=activation.sigmoid, activate_derivative=activation.sigmoid_derivative, optimizer='adam', learning_rate=0.05, n_epoch = 100000)
+    model = MLPClassifier(layers= [20,10,5], activate_function=activation.sigmoid, activate_derivative=activation.sigmoid_derivative, optimizer=optimizer.Adam, learning_rate=0.05, n_epoch = 100000)
     model.fit(train_X, train_y)
     pred = model.predict(test_X)
     print(pred)

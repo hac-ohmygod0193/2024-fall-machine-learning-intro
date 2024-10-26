@@ -44,16 +44,25 @@ class optimizer():
     def __init__(self):
         # TODO
         pass
-    def SGD(self, dW, db):
-        self.W = self.W - self.lr * dW
-        self.b = self.b - self.lr * db
-    def Adam(self, dW, db):
-        # TODO
-        pass
-    def RMSprop(self, dW, db):
-        # TODO
-        pass
+    def SGD(W, b, dW, db,learning_rate):
+        for i in range(len(W)):
+            W[i] -= learning_rate * dW[i]
+            b[i] -= learning_rate * db[i]
+        return W, b
+    def Adam(W, b, dW, db, learning_rate, m, v, t):
+        t += 1
+        beta1, beta2, epsilon = 0.9, 0.999, 1e-8
 
+        for i in range(len(W)):
+            m[i] = beta1 * m[i] + (1 - beta1) * dW[i]
+            v[i] = beta2 * v[i] + (1 - beta2) * (dW[i] ** 2)
+
+            m_hat = m[i] / (1 - beta1 ** t)
+            v_hat = v[i] / (1 - beta2 ** t)
+
+            W[i] -= learning_rate * m_hat / (np.sqrt(v_hat) + epsilon)
+            b[i] -= learning_rate * db[i]
+        return W, b, m, v, t
 # Base classifier class
 class Classifier(ABC):
     @abstractmethod
@@ -70,68 +79,6 @@ class Classifier(ABC):
     def predict_proba(self, X):
         # Abstract method predict the probability of the dataset X
         pass
-
-class LogisticRegressionClassifier(Classifier):
-    def __init__(self, C=1.0, penalty='l2', lr=1e-2, iterations=600):
-        super(LogisticRegressionClassifier, self).__init__()
-
-        self.iterations = iterations
-        self.lr= lr
-        self.C = C
-        self.penalty = penalty
-
-    def sigmoid(self, x):
-        """ The sigmoid function """
-        return 1.0 / (1.0 + np.exp(-x))
-    
-    def linear(self, X):
-        return np.dot(X, self.W) + self.b
-    
-    def SGD(self, dW, db):
-        self.W = self.W - self.lr * dW
-        self.b = self.b - self.lr * db
-
-    def binaryCrossEntropy(self, pred, target):
-        return -np.mean(target * np.log(pred) + (1 - target) * np.log(1 - pred))
-
-    def fit(self, X, y):
-        m, n = X.shape # (m, n)
-        self.W = np.random.randn(n) # (n,)
-        # self.W = np.zeros(n)
-        self.b = 0
-        self.loss = []
-
-        y = np.array(y).flatten()  # make sure y is one dimension
-
-        for i in range(self.iterations):
-            z = self.linear(X)
-            y_hat = self.sigmoid(z)
-
-            dW = 1/m * np.dot(X.T, (y_hat - y))
-            db = 1/m * np.sum(y_hat - y)
-
-            if self.penalty == 'l2':
-                dW += (self.C / m) * self.W
-            elif self.penalty == 'l1':
-                dW += (self.C / m) * np.sign(self.W)
-
-            # update weight and bias
-            self.SGD(dW, db)
-
-            # compute loss
-            loss = self.binaryCrossEntropy(y_hat, y)
-            if(i%(self.iterations/20)==0):
-                print(f'Epoch {i + 1}/{self.iterations}, Loss: {loss}')
-            self.loss.append(loss)
-    
-    def predict(self, X):
-        y_hat = self.predict_proba(X)
-        return [1 if i > 0.5 else 0 for i in y_hat]
-    
-    def predict_proba(self, X):
-        z = self.linear(X)
-        return self.sigmoid(z)
-
     
   
 class MLPClassifier(Classifier):
@@ -177,29 +124,15 @@ class MLPClassifier(Classifier):
         
     def update(self):
         """ The update method to update parameters """
-    
-        if self.optimizer == 'adam':
+        
+        if self.optimizer == optimizer.Adam:
             if not hasattr(self, 'm'):
                 self.m = [np.zeros_like(w) for w in self.W]
                 self.v = [np.zeros_like(w) for w in self.W]
                 self.t = 0
-
-            self.t += 1
-            beta1, beta2, epsilon = 0.9, 0.999, 1e-8
-
-            for i in range(len(self.W)):
-                self.m[i] = beta1 * self.m[i] + (1 - beta1) * self.dW[i]
-                self.v[i] = beta2 * self.v[i] + (1 - beta2) * (self.dW[i] ** 2)
-
-                m_hat = self.m[i] / (1 - beta1 ** self.t)
-                v_hat = self.v[i] / (1 - beta2 ** self.t)
-
-                self.W[i] -= self.learning_rate * m_hat / (np.sqrt(v_hat) + epsilon)
-                self.b[i] -= self.learning_rate * self.db[i]
-        elif self.optimizer == 'sgd':
-            for i in range(len(self.W)):
-                self.W[i] -= self.learning_rate * self.dW[i]
-                self.b[i] -= self.learning_rate * self.db[i]
+            self.W, self.b, self.m, self.v, self.t = self.optimizer(self.W, self.b, self.dW, self.db, self.learning_rate, self.m, self.v, self.t)
+        elif self.optimizer == optimizer.SGD:
+            self.W, self.b = self.optimizer(self.W, self.b, self.dW, self.db, self.learning_rate)
     def binaryCrossEntropy(self, y_hat, y):
         # add an epsilon to avoid taking the log of zero
         m = y.shape[0]
@@ -222,11 +155,19 @@ class MLPClassifier(Classifier):
         y_train = np.array(y_train).flatten()  # make sure y is one dimension
         
         # Weight initialization should be based on the layer size
-        # He initialization
-        for i in range(len(self.layers) - 1):
-            self.W.append(np.random.randn(self.layers[i], self.layers[i + 1]) * np.sqrt(2.0 / self.layers[i]))  # He initialization
-            self.b.append(np.zeros((1, self.layers[i + 1])))
+        intialize_method = ['he', 'xavier']
+        initialization = intialize_method[1]
         
+        if initialization == 'he':
+            # He initialization
+            for i in range(len(self.layers) - 1):
+                self.W.append(np.random.randn(self.layers[i], self.layers[i + 1]) * np.sqrt(2.0 / self.layers[i]))
+                self.b.append(np.zeros((1, self.layers[i + 1])))
+        else:
+            # Xavier initialization
+            for i in range(len(self.layers) - 1):
+                self.W.append(np.random.randn(self.layers[i], self.layers[i + 1]) * np.sqrt(1.0 / self.layers[i]))
+                self.b.append(np.zeros((1, self.layers[i + 1])))
         # Training loop
         for epoch in range(self.n_epoch):
             
