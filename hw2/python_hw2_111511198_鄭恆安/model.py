@@ -42,7 +42,6 @@ class activation:
 # ====== Optimizer function ====== #
 class optimizer():
     def __init__(self):
-        # TODO
         pass
     def SGD(W, b, dW, db,learning_rate):
         for i in range(len(W)):
@@ -63,6 +62,13 @@ class optimizer():
             W[i] -= learning_rate * m_hat / (np.sqrt(v_hat) + epsilon)
             b[i] -= learning_rate * db[i]
         return W, b, m, v, t
+
+    def Momentum(W, b, dW, db, learning_rate, velocity, beta=0.9):
+        for i in range(len(W)):
+            velocity[i] = beta * velocity[i] + (1 - beta) * dW[i]
+            W[i] -= learning_rate * velocity[i]
+            b[i] -= learning_rate * db[i]
+        return W, b, velocity
 # Base classifier class
 class Classifier(ABC):
     @abstractmethod
@@ -82,7 +88,7 @@ class Classifier(ABC):
     
   
 class MLPClassifier(Classifier):
-    def __init__(self, layers=[10, 3], activate_function=activation.sigmoid, activate_derivative=activation.sigmoid_derivative, optimizer=None, learning_rate=0.05, n_epoch=10000):
+    def __init__(self, layers=[10, 3], activate_function=activation.sigmoid, activate_derivative=activation.sigmoid_derivative, optimizer=optimizer.Adam, learning_rate=0.05, n_epoch=10000):
         self.hidden_layers = layers
         self.activate_function = activate_function
         self.activate_derivative = activate_derivative
@@ -110,6 +116,7 @@ class MLPClassifier(Classifier):
 
     def backwardPass(self, y):
         """ Backward pass of MLP """
+        # Compute the gradients of the loss with respect to the weights and biases
         m = y.shape[0]
         dz = self.a[-1] - y.reshape(-1, 1)
         self.dW = []
@@ -120,11 +127,12 @@ class MLPClassifier(Classifier):
             self.dW.insert(0, dW)
             self.db.insert(0, db)
             if i > 0:
+                # compute the gradient of the loss with respect to the activations
                 dz = np.dot(dz, self.W[i].T) * self.activate_derivative(self.a[i])
         
     def update(self):
         """ The update method to update parameters """
-        
+        # Update the weights and biases
         if self.optimizer == optimizer.Adam:
             if not hasattr(self, 'm'):
                 self.m = [np.zeros_like(w) for w in self.W]
@@ -133,11 +141,19 @@ class MLPClassifier(Classifier):
             self.W, self.b, self.m, self.v, self.t = self.optimizer(self.W, self.b, self.dW, self.db, self.learning_rate, self.m, self.v, self.t)
         elif self.optimizer == optimizer.SGD:
             self.W, self.b = self.optimizer(self.W, self.b, self.dW, self.db, self.learning_rate)
+        elif self.optimizer == optimizer.Momentum:
+            if not hasattr(self, 'velocity'):
+                self.velocity = [np.zeros_like(w) for w in self.W]
+            self.W, self.b, self.velocity = self.optimizer(self.W, self.b, self.dW, self.db, self.learning_rate, self.velocity)
     def binaryCrossEntropy(self, y_hat, y):
         # add an epsilon to avoid taking the log of zero
-        m = y.shape[0]
-        epsilon = 1e-8
-        loss = -1/m * np.sum(y * np.log(y_hat + epsilon) + (1 - y) * np.log(1 - y_hat + epsilon))
+        epsilon = 1e-15  # Small constant to avoid log(0)
+        # Clip predictions to avoid 0s and 1s
+        y_hat = np.clip(y_hat, epsilon, 1 - epsilon)
+        
+        # Calculate loss
+        m = y.shape[0]  # number of examples
+        loss = -1/m * np.sum(y * np.log(y_hat) + (1 - y) * np.log(1 - y_hat))
         return loss
     def fit(self, X_train, y_train):
         """ Fit method for MLP, call it to train your MLP model """
@@ -150,6 +166,7 @@ class MLPClassifier(Classifier):
         # Initialize weights and biases
         self.W = []
         self.b = []
+        self.loss = []
         self.val_loss = []
         self.layers = [X_train.shape[1]] + self.hidden_layers + [1]
         y_train = np.array(y_train).flatten()  # make sure y is one dimension
@@ -175,18 +192,17 @@ class MLPClassifier(Classifier):
             y_hat = self.forwardPass(X_train)
             # Compute loss (binary cross-entropy)
             loss = self.binaryCrossEntropy(y_hat, y_train)
-
+            
             # Validation loss
             if(epoch%100==0):
                 if X_val is not None and y_val is not None:
                     y_val_hat = self.forwardPass(X_val,True)
                     val_loss = self.binaryCrossEntropy(y_val_hat, y_val)
                     self.val_loss.append(val_loss)
-
+                self.loss.append(loss)
             if(epoch%(self.n_epoch/5)==0):
                 self.learning_rate*=0.9
             if(epoch%(self.n_epoch/10)==0):
-                
                 print(f'Epoch {epoch + 1}/{self.n_epoch}, Loss: {loss}, Val Loss: {val_loss if X_val is not None else "N/A"}')
             
             # Backward pass
@@ -199,8 +215,6 @@ class MLPClassifier(Classifier):
             if len(self.val_loss) > 5 and all(self.val_loss[-i] > self.val_loss[-i-1] for i in range(1, 6)):
                 print("Early stopping due to increase in validation loss at epoch = ", epoch)
                 break
-
-            
                 
 
     def predict(self, X_test):
