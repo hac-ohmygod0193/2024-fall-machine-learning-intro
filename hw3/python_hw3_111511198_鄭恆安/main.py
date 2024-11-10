@@ -13,19 +13,20 @@ def dataPreprocessing(threshold=0.1):
     train_X = os.path.join(root_path, "train_x.csv")
     train_y = os.path.join(root_path, "train_y.csv")
     test_X = os.path.join(root_path, "test_x.csv")
-    test_y = os.path.join(root_path, "test_y.csv")
-
+    
     train_X = pd.read_csv(train_X)
     train_y = pd.read_csv(train_y)
     test_X = pd.read_csv(test_X)
-    test_y = pd.read_csv(test_y)
+    
 
     # preprocess the data
     # standardize & booleanize the data
 
     train_X = Preprocessor(train_X).preprocess()
     test_X = Preprocessor(test_X).preprocess()
-
+    print(train_X.columns)
+    print(train_y.columns)
+    print(test_X.columns)
     # use feature_selection to select the feature
     
     # concat train_X and train_y
@@ -41,17 +42,16 @@ def dataPreprocessing(threshold=0.1):
     test_X = test_X.fillna(test_X.mean())
 
     # remove the label column, because we don't have test_y
-    test_data = test_data[selected_column[:-1]] 
+    test_X = test_X[selected_column[:-1]] 
 
     # print(train_data.head())
-
-    # convert the data to numpy array
-    train_X = train_data.iloc[:, :-1].to_numpy().astype(float)
-    train_y = train_data.iloc[:, -1].to_numpy().astype(float)
+    if 'Unnamed: 0' in train_X.columns:
+        train_X = train_X.drop(columns=['Unnamed: 0'])
+    if 'Unnamed: 0' in train_y.columns:
+        train_y = train_y.drop(columns=['Unnamed: 0'])
+    if 'Unnamed: 0' in test_X.columns:
+        test_X = test_X.drop(columns=['Unnamed: 0'])
     
-    test_X = test_X.to_numpy().astype(float)
-
-    print(train_X.shape, train_y.shape, test_X.shape)
     
     return train_X, train_y, test_X # train, test data should be numpy array
 
@@ -60,20 +60,22 @@ def dataPreprocessing(threshold=0.1):
 
 def main():
     train_X, train_y, test_X = dataPreprocessing(0.1) # train, test data should not contain index
-    
-
+    print(train_X.columns)
+    print(train_y.columns)
+    print(test_X.columns)
     Decision_tree = DecisionTreeClassifier(max_depth=1)
     Decision_tree.fit(train_X,train_y)
-    
+    Decision_tree.print_tree()
+    '''
     # TODO 
     # build your decision tree
     # predict the output of the testing data
     # remember to save the predict label as .csv file
     pred = Decision_tree.predict(test_X)
     pred = pd.DataFrame(pred)
-    root_path = './proj3_data/' # change the root path
-    pred.to_csv(root_path+'pred.csv', index=False, header=False)
-
+    root_path = './' # change the root path
+    pred.to_csv(root_path+'pred_hw3_111511198_鄭恆安.csv', index=False, header=False)
+    '''
 
 if __name__ == "__main__":
     np.random.seed(0)
