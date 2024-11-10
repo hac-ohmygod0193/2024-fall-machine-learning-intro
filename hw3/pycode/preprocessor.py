@@ -42,7 +42,7 @@ class Preprocessor:
         return self.df
     def normalize(self):
         # Normalize the DataFrame
-        # only F1 to F77 will be Standardize
+        # only F1 to F77 will be Normalized
         self.df.iloc[:, 1:18] = (self.df.iloc[:, 1:18] - self.df.iloc[:, 1:18].min()) / (self.df.iloc[:, 1:18].max()-self.df.iloc[1:18].min())
         return self.df
     def booleanize(self):
