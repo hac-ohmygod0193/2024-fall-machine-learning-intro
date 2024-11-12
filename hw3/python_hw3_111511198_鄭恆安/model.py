@@ -39,20 +39,13 @@ class TreeNode:
             self.value = 0
         else:
             self.value = 1
-    def predict_result(self, x):
-        if self.left is None and self.right is None:
-            return np.argmax([self.zero, self.one])
-        if x[self.feature] < self.threshold:
-            return self.left.predict_result(x)
-        else:
-            return self.right.predict_result(x)
 
 class DecisionTreeClassifier:
     def __init__(self, max_depth=5,min_samples_leaf=1,method='entropy'):
         self.max_depth = max_depth
         self.tree = None
         self.min_samples_leaf = min_samples_leaf
-        self.min_ig = 0.0
+        self.min_gain_ratio = 0.01
         self.method = method
     def fit(self, X, y):
         y = np.array(y['label'])
@@ -64,12 +57,14 @@ class DecisionTreeClassifier:
             return node
         # find the best split
         feature, threshold = self.find_best_split(X, y)
+        if feature is None:
+            node.create_leaf()
+            return node
         # split the dataset
         X_left, X_right, y_left, y_right = self.split_dataset(X, y, feature, threshold)
         
         # grow the tree
         node.create_node(feature, threshold)
-        #print(len(y_left), len(y_right), len(y))
         node.left = self._grow_tree(X_left, y_left, depth + 1)
         node.right = self._grow_tree(X_right, y_right, depth + 1)
         return node
@@ -84,24 +79,22 @@ class DecisionTreeClassifier:
         X_right = X[right_indices]
         y_left = y[left_indices]
         y_right = y[right_indices]
-
-        X_left = X_left.drop(columns=[feature_index])
-        X_right = X_right.drop(columns=[feature_index])
+        # F1 to F17 are numeric features,
+        # remove the feature if it is categorical (F18~F77)
+        if (int(feature_index[1:])>17): 
+            X_left = X_left.drop(columns=[feature_index])
+            X_right = X_right.drop(columns=[feature_index])
         return X_left, X_right, y_left, y_right
 
 
     # Find the best split for the dataset
     def find_best_split(self, X, y):
-        # X is dataframes
-        # y is numpy array
         max_gain_ratio = float('-inf')
         best_feature, best_threshold = None, None
         for feature_index in X.columns:
-            #print(f'Feature: {feature_index}')
             feature_values = X[feature_index].values
             for threshold in np.unique(feature_values):
                 y_left,y_right = [], []
-                #print("threshold", threshold, len(feature_values), len(y))
                 for i in range(len(feature_values)):
                     if feature_values[i] < threshold:
                         y_left.append(y[i])
@@ -112,8 +105,8 @@ class DecisionTreeClassifier:
                     max_gain_ratio = gain_ratio
                     best_feature = feature_index
                     best_threshold = threshold
-                
-        print(f'Best feature: {best_feature}, Best threshold: {best_threshold}, Max Gain Ratio: {max_gain_ratio}')
+        if max_gain_ratio < self.min_gain_ratio:
+            return None, None
         return best_feature, best_threshold
     def entropy(self, y):
         # Calculate the entropy of the dataset
@@ -144,22 +137,15 @@ class DecisionTreeClassifier:
         
         # Avoid division by zero
         return ig / si if si != 0 else 0
+    
     # prediction
-    def predict_proba(self, X):
-        raise NotImplementedError
     def predict_score(self, pred, y):
         acc = accuracy_score(pred, y)
         f1 = f1_score(pred, y, zero_division=0)
         mcc = matthews_corrcoef(pred, y)
-        print(pred)
-        #print(y)
-        print('-' * 50)
-        print(f'Acc: {acc:.5f}')
-        print(f'F1 score: {f1:.5f}')
-        print(f'MCC: {mcc:.5f}')
         scoring = 0.3 * acc + 0.35 * f1 + 0.35 * mcc
-        print(f'Scoring: {scoring:.5f}')
-        print('-' * 50)
+        
+        return scoring
     def predict(self, X):
         if self.tree is None:
             raise ValueError("Tree is empty")
@@ -177,17 +163,17 @@ class DecisionTreeClassifier:
             return self._predict_tree(X, node.right)
 
     # print tree
-    def print_tree(self):
+    def print_tree(self, max_print_depth=3):
         if self.tree is None:
             print("Tree is empty")
             return
-        self._print_tree(self.tree)
-    def _print_tree(self, node, depth=0, max_print_depth=2):
-        
+        self._print_tree(self.tree,max_print_depth=3)
+    def _print_tree(self, node, depth=0, max_print_depth=3):
+        max_print_depth-=1 # because start from 0
         if node is None:
             return
         if node.attr == 'node':
-            print(f'{"  " * depth}[{node.feature}] [{node.zero} 0 / {node.one} 1]')
+            print(f'{"  " * depth}[{node.feature}] [{node.zero} 0 / {node.one} 1] [Threshold = {node.threshold}]')
         else:
             print(f'{"  " * depth}[{node.value}]')
         if depth >= max_print_depth or node.attr == 'leaf':
@@ -197,4 +183,31 @@ class DecisionTreeClassifier:
             self._print_tree(node.left, depth + 1)
             print(f'{"  " * depth}Right:')
             self._print_tree(node.right, depth + 1)
+    # post-pruning
+    def post_prune(self, validation_X, validation_y):
+        if self.tree is None:
+            raise ValueError("Tree is empty")
+        self.prune_node(self.tree, validation_X, validation_y)
+    def prune_node(self, node, validation_X, validation_y):
+        if node.attr == 'leaf':
+            return
+        # Calculate current performance
+        original_score = self.predict_score(self.predict(validation_X), validation_y)
+        
+        # Try making node a leaf
+        temp_attr = node.attr
+        node.create_leaf()
+        
+        # Calculate new performance
+        new_score = self.predict_score(self.predict(validation_X), validation_y)
+        
+        # Revert if no improvement
+        if new_score <= original_score:
+            node.attr = temp_attr
+        else:
+            print(f'Pruned node: {node.feature} {node.threshold}')    
+        # Continue pruning children if not leaf
+        if node.attr != 'leaf':
+            self.prune_node(node.left, validation_X, validation_y)
+            self.prune_node(node.right, validation_X, validation_y)
   
