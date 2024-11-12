@@ -37,7 +37,7 @@ def dataPreprocessing(threshold=0.1):
 
     train_data = train_data[selected_column]
     # balance the data
-    train_data = Preprocessor(train_data).oversample_minority_class()
+    #train_data = Preprocessor(train_data).oversample_minority_class()
     
     # train data
     train_X = train_data.drop(columns=['label'])
@@ -62,20 +62,14 @@ def dataPreprocessing(threshold=0.1):
 
 
 def main():
-    train_X, train_y, test_X = dataPreprocessing(0.1) # train, test data should not contain index
+    train_X, train_y, test_X = dataPreprocessing(0.11) # train, test data should not contain index
     
-    model = DecisionTreeClassifier(max_depth=5, min_samples_leaf=1, method='entropy')
+    model = DecisionTreeClassifier(max_depth=20, min_samples_leaf=3, method='gini')
     model.fit(train_X,train_y)
     model.print_tree()
     '''
     # TODO 
     # build your decision tree
-    # predict the output of the testing data
-    # remember to save the predict label as .csv file
-    pred = Decision_tree.predict(test_X)
-    pred = pd.DataFrame(pred)
-    root_path = './' # change the root path
-    pred.to_csv(root_path+'pred_hw3_111511198_鄭恆安.csv', index=False, header=False)
     '''
     train_pred = model.predict(train_X)
     train_y = np.array(train_y['label'])
@@ -85,7 +79,13 @@ def main():
     test_y = np.array(test_y['label'])
     model.predict_score(train_pred, train_y)
     model.predict_score(pred, test_y)
-
+    # predict the output of the testing data
+    # remember to save the predict label as .csv file
+    df = pd.DataFrame()
+    df['label'] = pred
+    root_path = './' # change the root path
+    df.to_csv(root_path+'pred_hw3_111511198_鄭恆安.csv')
+    
 if __name__ == "__main__":
     np.random.seed(0)
     main()
