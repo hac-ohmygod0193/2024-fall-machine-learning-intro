@@ -110,9 +110,11 @@ def main():
     KFold_cross_validation(train_X, train_y, 5)
     model = NaiveBayesClassifier(mode='continuous') # 'continuous', 'discrete' or 'mixed'
     model.fit(train_X, train_y)
+
+    # plot the distribution of the training data
     model.plot_continuous_distribution(X)
     model.plot_categorical_distribution(X)
-    # TODO 
+
     # build your NB model
     # predict the output of the testing data
     # remember to save the predict label as .csv file
