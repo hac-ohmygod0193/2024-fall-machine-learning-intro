@@ -73,9 +73,9 @@ def test_base_learner():
         passed_tests += 1
     if test_model(MLPClassifier, X, y, "Linear Data Test"):
         passed_tests += 1
-    
+    print(f"\nTotal Base learner passed: {passed_tests} / 5")
     return passed_tests
-    # print(f"\nTotal Base learner passed: {passed_tests} / 5")
+    
 
 
 def test_meta_learner():
@@ -83,8 +83,9 @@ def test_meta_learner():
     if test_model(StackingClassifier, X, y, "Linear Data Test"):
         return 1
     else: 
+        print(f"\nMeta learner passed!")
         return 0
-        # print(f"\nMeta learner passed!")
+        
 
 
 # Do not modify anything above this line to prevent error

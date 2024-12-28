@@ -47,9 +47,23 @@ class DecisionTreeClassifier:
         self.min_samples_leaf = min_samples_leaf
         self.min_gain_ratio = 0.01
         self.method = method
-    def fit(self, X, y):
-        y = np.array(y['label'])
-        self.tree = self._grow_tree(X, y)
+    def fit_post_prune(self, X, y):
+        total = len(X)
+        train_size = int(total * 0.8)
+        train_X, val_X = X[:train_size], X[train_size:]
+        train_y, val_y = y[:train_size], y[train_size:]
+        train_y = np.array(train_y['label'])
+        self.tree = self._grow_tree(train_X, train_y)
+        self.post_prune(val_X, val_y)
+    def fit(self, X, y, post_prune=True):
+        
+        if post_prune:
+            self.fit_post_prune(X, y)
+        # split the training data into training and validation data
+        else:
+            y = np.array(y['label'])
+            self.tree = self._grow_tree(X, y)
+        
     def _grow_tree(self, X, y, depth=0):
         node = TreeNode(y, depth)
         if depth > self.max_depth or len(y) < self.min_samples_leaf or np.unique(y).shape[0] == 1:
@@ -79,11 +93,7 @@ class DecisionTreeClassifier:
         X_right = X[right_indices]
         y_left = y[left_indices]
         y_right = y[right_indices]
-        # F1 to F17 are numeric features,
-        # remove the feature if it is categorical (F18~F77)
-        if (int(feature_index[1:])>17): 
-            X_left = X_left.drop(columns=[feature_index])
-            X_right = X_right.drop(columns=[feature_index])
+        
         return X_left, X_right, y_left, y_right
 
 

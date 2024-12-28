@@ -56,7 +56,7 @@ def dataPreprocessing(threshold=0.1):
     
     
     return train_X, train_y, test_X # train, test data should be numpy array
-def KFold_cross_validation(X, y, n, k=5):
+def KFold_cross_validation(X, y, n):
     fold_size = len(X) // n
     data = pd.concat([X, y], axis=1)
     data = data.sample(frac=1).reset_index(drop=True)
@@ -66,7 +66,7 @@ def KFold_cross_validation(X, y, n, k=5):
         'f1': [],
         'mcc': [],
     }
-    print('k:', k)
+    print('k:', n)
     for i in tqdm(range(n)):
         start, end = i * fold_size, (i + 1) * fold_size
         val_data = data[start:end]

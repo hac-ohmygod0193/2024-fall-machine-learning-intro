@@ -3,8 +3,9 @@ from abc import ABC, abstractmethod
 import pandas as pd
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, matthews_corrcoef, roc_auc_score
 import seaborn as sns
+import warnings
 import matplotlib.pyplot as plt
-
+warnings.filterwarnings("ignore")
 # Base classifier class
 class Classifier(ABC):
     @abstractmethod
@@ -90,7 +91,6 @@ class LogisticRegressionClassifier(Classifier):
         return accuracy_score(pred, y)
  
     
-
 # ====== Activation funtion ====== #
 class activation():
     def __init__(self):
@@ -178,7 +178,7 @@ class Classifier(ABC):
     
   
 class MLPClassifier(Classifier):
-    def __init__(self, layers=[10, 3], activate_function=activation.sigmoid, activate_derivative=activation.sigmoid_derivative, optimizer=optimizer.Adam, learning_rate=0.05, n_epoch=10000):
+    def __init__(self, layers=[20, 10], activate_function=activation.sigmoid, activate_derivative=activation.sigmoid_derivative, optimizer=optimizer.Adam, learning_rate=0.05, n_epoch=10000):
         self.hidden_layers = layers
         self.activate_function = activate_function
         self.activate_derivative = activate_derivative
@@ -316,11 +316,6 @@ class MLPClassifier(Classifier):
         """ Method for predicting the probability of the testing data """
         return self.forwardPass(X_test)
 
-
-
-    
-
-
 # Decision Tree Classifier
 class TreeNode:
     def __init__(self, data, depth):
@@ -343,16 +338,38 @@ class TreeNode:
             self.value = 1
 
 class DecisionTreeClassifier:
-    def __init__(self, max_depth=5,min_samples_leaf=1,method='entropy'):
+    def __init__(self, max_depth=25, min_samples_leaf=5, method='gini'):
         self.max_depth = max_depth
         self.tree = None
         self.min_samples_leaf = min_samples_leaf
         self.min_gain_ratio = 0.01
         self.method = method
-    def fit(self, X, y):
-        y = np.array(y['label'])
-        self.tree = self._grow_tree(X, y)
+    def fit_post_prune(self, X, y):
+        print("Post-pruning")
+        total = len(X)
+        train_size = int(total * 0.8)
+        train_X, val_X = X[:train_size], X[train_size:]
+        train_y, val_y = y[:train_size], y[train_size:]
+        train_y = np.array(train_y['label'])
+        self.tree = self._grow_tree(train_X, train_y)
+        self.post_prune(val_X, val_y)
+
+    def fit(self, X, y, post_prune=True):
+        print("Method:", self.method)
+        print("Max depth:", self.max_depth)
+        print("Min samples leaf:", self.min_samples_leaf)
+        if isinstance(X, np.ndarray):
+            X = pd.DataFrame(X, columns=[f'F{i+1}' for i in range(X.shape[1])])
+            y = pd.DataFrame(y, columns=['label'])
+        if post_prune:
+            self.fit_post_prune(X, y)
+        # split the training data into training and validation data
+        else:
+            y = np.array(y['label'])
+            self.tree = self._grow_tree(X, y)
     def _grow_tree(self, X, y, depth=0):
+        if isinstance(X, np.ndarray):
+            X = pd.DataFrame(X, columns=[f'F{i+1}' for i in range(X.shape[1])])
         node = TreeNode(y, depth)
         if depth > self.max_depth or len(y) < self.min_samples_leaf or np.unique(y).shape[0] == 1:
             node.create_leaf()
@@ -373,7 +390,8 @@ class DecisionTreeClassifier:
 
     # Split dataset based on a feature and threshold
     def split_dataset(self, X, y, feature_index, threshold):
-
+        if isinstance(X, np.ndarray):
+            X = pd.DataFrame(X, columns=[f'F{i+1}' for i in range(X.shape[1])])
         left_indices = X[feature_index] < threshold
         right_indices = X[feature_index] >= threshold
 
@@ -381,16 +399,14 @@ class DecisionTreeClassifier:
         X_right = X[right_indices]
         y_left = y[left_indices]
         y_right = y[right_indices]
-        # F1 to F17 are numeric features,
-        # remove the feature if it is categorical (F18~F77)
-        if (int(feature_index[1:])>17): 
-            X_left = X_left.drop(columns=[feature_index])
-            X_right = X_right.drop(columns=[feature_index])
+        
         return X_left, X_right, y_left, y_right
 
 
     # Find the best split for the dataset
     def find_best_split(self, X, y):
+        if isinstance(X, np.ndarray):
+            X = pd.DataFrame(X, columns=[f'F{i+1}' for i in range(X.shape[1])])
         max_gain_ratio = float('-inf')
         best_feature, best_threshold = None, None
         for feature_index in X.columns:
@@ -449,6 +465,8 @@ class DecisionTreeClassifier:
         
         return scoring
     def predict(self, X):
+        if isinstance(X, np.ndarray):
+            X = pd.DataFrame(X, columns=[f'F{i+1}' for i in range(X.shape[1])])
         if self.tree is None:
             raise ValueError("Tree is empty")
         preds = []
@@ -513,8 +531,6 @@ class DecisionTreeClassifier:
             self.prune_node(node.left, validation_X, validation_y)
             self.prune_node(node.right, validation_X, validation_y)
   
-
-
 # K-Nearest Neighbors Classifier
 class KNearestNeighborClassifier(Classifier):
     def __init__(self, k=3, distance_metric='euclidean'): 
@@ -619,7 +635,7 @@ class NaiveBayesClassifier(Classifier):
         """Calculate likelihood probabilities for categorical features"""
         categorical_prob = {}
         #data =  pd.concat([X_categorical, y], axis=1)
-        print("-----------------")
+        #print("-----------------")
         #print(X_categorical[y.iloc[:, -1] == 1])
         for c in self.classes:
             categorical_prob[c] = {}
@@ -652,10 +668,16 @@ class NaiveBayesClassifier(Classifier):
         y : array-like
             Target values
         """
-        # Select features
-        self.continuous_features = [col for col in X.columns if col.startswith('F') and 1 <= int(col[1:]) <= 17]
-        self.categorical_features = [col for col in X.columns if col.startswith('F') and 18 <= int(col[1:]) <= 77]
-        
+        if(isinstance(X, np.ndarray)):
+            X = pd.DataFrame(X)
+            y = pd.DataFrame(y)
+        self.continuous_features = [col for col in X.columns if X[col].unique().shape[0] > 2]
+        self.categorical_features = [col for col in X.columns if X[col].unique().shape[0] <=2]
+        print(f"Continuous features: {self.continuous_features}")
+        print(f"Categorical features: {self.categorical_features}")
+        if(self.mode == 'continuous' and len(self.continuous_features) < 3):
+            print("Not enough continuous features for 'continuous' mode. Switching to 'discrete' mode.")
+        print("Mode:", self.mode)
         # Split features
         X_continuous = X[self.continuous_features]
         X_categorical = X[self.categorical_features]
@@ -680,6 +702,8 @@ class NaiveBayesClassifier(Classifier):
         X : pandas DataFrame
             The input features
         """
+        if(isinstance(X, np.ndarray)):
+            X = pd.DataFrame(X)
         # Split features using saved feature lists
         X_continuous = X[self.continuous_features]
         X_categorical = X[self.categorical_features]

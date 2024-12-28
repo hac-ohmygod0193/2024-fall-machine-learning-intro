@@ -123,13 +123,13 @@ def find_best_params(X, y, params):
     print('best_params:', best_params, 'best_score:', best_score)
     return best_params, best_score
 def main():
-    train_X, train_y, test_X = dataPreprocessing(0.1) # train, test data should not contain index
+    X, y, test_X = dataPreprocessing(0.1) # train, test data should not contain index
 
     # split the training data into training and validation data
-    total = len(train_X)
+    total = len(X)
     train_size = int(total * 0.8)
-    train_X, val_X = train_X[:train_size], train_X[train_size:]
-    train_y, val_y = train_y[:train_size], train_y[train_size:]
+    train_X, val_X = X[:train_size], X[train_size:]
+    train_y, val_y = y[:train_size], y[train_size:]
 
     params = {
         'max_depth': [15, 20, 25],
@@ -142,9 +142,7 @@ def main():
     
     # best model
     model = DecisionTreeClassifier(max_depth=25, min_samples_leaf=5, method='gini')
-    model.fit(train_X,train_y)
-    
-    
+    model.fit(train_X, train_y, post_prune=False)
     
     pred = model.predict(val_X)
     scoring = model.predict_score(pred, val_y)

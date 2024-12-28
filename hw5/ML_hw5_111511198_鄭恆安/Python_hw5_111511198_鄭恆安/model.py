@@ -88,9 +88,12 @@ class NaiveBayesClassifier(Classifier):
             Target values
         """
         # Select features
-        self.continuous_features = [col for col in X.columns if col.startswith('F') and 1 <= int(col[1:]) <= 17]
-        self.categorical_features = [col for col in X.columns if col.startswith('F') and 18 <= int(col[1:]) <= 77]
-        
+        self.continuous_features = [col for col in X.columns if X[col].unique().shape[0] > 2]
+        self.categorical_features = [col for col in X.columns if X[col].unique().shape[0] <=2]
+        print(f"Continuous features: {self.continuous_features}")
+        print(f"Categorical features: {self.categorical_features}")
+        if(self.mode == 'continuous' and len(self.continuous_features) < 3):
+            self.mode = 'mixed'
         # Split features
         X_continuous = X[self.continuous_features]
         X_categorical = X[self.categorical_features]
