@@ -16,15 +16,16 @@ class StackingClassifier:
         """
         # Define base learners
         base_learners = [
-            ('logistic_regression', LogisticRegressionClassifier()),
+            #('logistic_regression', LogisticRegressionClassifier()),
             ('decision_tree', DecisionTreeClassifier()),
             ('knn', KNearestNeighborClassifier()),
             ('naive_bayes', NaiveBayesClassifier()),
-            #('mlp', MLPClassifier())
+            ('mlp', MLPClassifier())
         ]
 
         # Define meta-learner
-        meta_learner = MLPClassifier()  # or MLPClassifier()
+        #meta_learner = MLPClassifier()  # or MLPClassifier()
+        meta_learner = LogisticRegressionClassifier()
         self.base_learners = base_learners
         self.meta_learner = meta_learner
         self.n_splits = 5
