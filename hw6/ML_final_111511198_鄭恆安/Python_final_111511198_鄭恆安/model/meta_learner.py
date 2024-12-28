@@ -17,6 +17,7 @@ class StackingClassifier:
                 ('mlp', MLPClassifier())
             ],
             meta_learner = LogisticRegressionClassifier(),
+            n_splits = 5,
         ):
         """
         Stacking Classifier
@@ -24,7 +25,6 @@ class StackingClassifier:
         :param meta_learner: Meta-learner model.
         :param n_splits: Number of splits for cross-validation.
         """
-
         #meta_learner = MLPClassifier()
         self.base_learners = base_learners
         self.meta_learner = meta_learner
@@ -46,7 +46,7 @@ class StackingClassifier:
 
         self.base_learners_fitted = []
         n_samples, n_features = X_train_np.shape
-        kf = KFold(n_splits=self.n_splits, shuffle=False)
+        kf = KFold(n_splits=self.n_splits, shuffle=True, random_state=42)
 
         # Store out-of-fold predictions
         oof_predictions = np.zeros((n_samples, len(self.base_learners)))

@@ -82,8 +82,7 @@ def KFold_cross_validation(X, y, n, model):
         scores['accuracy'].append(accuracy_score(y_val, y_pred))
         scores['f1'].append(f1_score(y_val, y_pred))
         scores['mcc'].append(matthews_corrcoef(y_val, y_pred))
-        
-        #scores['score'] = model.predict_score(y_pred, y_val)
+        scores['score'] = model.predict_score(y_pred, y_val)
     
     for metric in scores:
         scores[metric] = np.mean(scores[metric])
@@ -93,21 +92,14 @@ def KFold_cross_validation(X, y, n, model):
     print('\n')
     return scores
 
-def check(model):
-    X, y, test_X = dataPreprocessing(0.11, "./proj2_data")
-    test_y = pd.read_csv("./proj2_data/test_y.csv")
-    pred = model.predict(test_X)
-    print(pred)
-    scoring = model.predict_score(pred, test_y['label'].values)
-    print(f'Scoring: {scoring:.5f}\n')
 
 
 def main():
-    X, y, test_X = dataPreprocessing(0.11, "./final_proj_data")
+    X, y, test_x = dataPreprocessing(0.11, "./final_proj_data")
     
     # split the training data into training and validation data
     total = len(X)
-    train_size = int(total * 0.8)
+    train_size = int(total * 0.9)
     train_X, val_X = X[:train_size], X[train_size:]
     train_y, val_y = y[:train_size], y[train_size:]
     base_learners = [
@@ -115,39 +107,23 @@ def main():
         ('decision_tree', DecisionTreeClassifier()),
         ('knn', KNearestNeighborClassifier()),
         ('naive_bayes', NaiveBayesClassifier()),
-        ('mlp', MLPClassifier(layers= [20,10], activate_function=activation.sigmoid, activate_derivative=activation.sigmoid_derivative, optimizer=optimizer.Adam, learning_rate=0.005, n_epoch = 10000))
+        ('mlp', MLPClassifier(layers= [20,10],learning_rate=0.05, n_epoch = 100000)),
     ]
-    #KFold_cross_validation(train_X, train_y, 10, base_learners[4][1])
-    #'''
-    kfold_model = StackingClassifier()
-    KFold_cross_validation(X, y, 10, kfold_model)
-    for learner in base_learners:
-        print(f"Training base learner: {learner[0]}")
-        KFold_cross_validation(train_X, train_y, 10, learner[1])
-        #model = learner[1]
-        #model.fit(X,y)
-        #check(model)
-    '''
-    model = StackingClassifier()
-    #model.fit(X, y)
-    #check(model)
-    
 
-    model.fit(train_X,train_y)
-    
-    pred = model.predict(val_X)
-    print(pred)
-    scoring = model.predict_score(pred, val_y.values)
+    kfold_scores = {}
+    kfold_model = StackingClassifier(base_learners)
+    scores = KFold_cross_validation(X, y, 10, kfold_model)
+    kfold_scores['stacking'] = scores
+    model = StackingClassifier(base_learners)
+    model.fit(train_X, train_y)
 
-    print(f'Scoring: {scoring:.5f}\n')
-    check(model)
-    '''
-    
-    # TODO 
-    # build your Stacking model
-    # predict the output of the testing data
-    # remember to paste the result of K-fold CV to your report
-    # remember to save the predict label as .csv file
+    test_pred = model.predict(test_x)
+    df = pd.DataFrame()
+    df['label'] = test_pred
+    root_path = './' # change the root path
+    df.to_csv(root_path+'pred_final_111511198_鄭恆安.csv')
+    print('Predict label has been saved as pred_final_111511198_鄭恆安.csv')
+
     
 
 if __name__ == "__main__":

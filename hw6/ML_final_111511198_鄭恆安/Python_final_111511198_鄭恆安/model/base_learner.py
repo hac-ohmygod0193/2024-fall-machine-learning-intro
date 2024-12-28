@@ -184,7 +184,7 @@ class Classifier(ABC):
     
   
 class MLPClassifier(Classifier):
-    def __init__(self, layers= [20,10] , activate_function=activation.sigmoid, activate_derivative=activation.sigmoid_derivative, optimizer=optimizer.Adam, learning_rate=0.005, n_epoch = 10000):
+    def __init__(self, layers= [10,3] , activate_function=activation.sigmoid, activate_derivative=activation.sigmoid_derivative, optimizer=optimizer.Adam, learning_rate=0.005, n_epoch = 10000):
         self.hidden_layers = layers
         self.activate_function = activate_function
         self.activate_derivative = activate_derivative
