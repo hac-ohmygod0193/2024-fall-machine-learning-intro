@@ -84,13 +84,7 @@ class LogisticRegressionClassifier(Classifier):
     def predict_proba(self, X):
         z = self.linear(X)
         return self.sigmoid(z)
-    def predict_score(self, pred, y):
-        acc = accuracy_score(pred, y)
-        f1 = f1_score(pred, y)
-        mcc = matthews_corrcoef(pred, y)
-        scoring = 0.3 * acc + 0.35 * f1 + 0.35 * mcc
-        
-        return scoring
+
     
     def score(self, X, y):
         pred = self.predict(X)
@@ -184,7 +178,7 @@ class Classifier(ABC):
     
   
 class MLPClassifier(Classifier):
-    def __init__(self, layers= [20,10] , activate_function=activation.sigmoid, activate_derivative=activation.sigmoid_derivative, optimizer=optimizer.Adam, learning_rate=0.005, n_epoch = 10000):
+    def __init__(self, layers= [20,10] , activate_function=activation.sigmoid, activate_derivative=activation.sigmoid_derivative, optimizer=optimizer.Adam, learning_rate=0.05, n_epoch = 100000):
         self.hidden_layers = layers
         self.activate_function = activate_function
         self.activate_derivative = activate_derivative
@@ -312,7 +306,7 @@ class MLPClassifier(Classifier):
             
             # Early stopping
             if len(self.val_loss) > 5 and all(self.val_loss[-i] > self.val_loss[-i-1] for i in range(1, 6)):
-                #print("Early stopping due to increase in validation loss at epoch = ", epoch)
+                print("Early stopping due to increase in validation loss at epoch = ", epoch)
                 break
                 
 
@@ -324,13 +318,7 @@ class MLPClassifier(Classifier):
     def predict_proba(self, X_test):
         """ Method for predicting the probability of the testing data """
         return self.forwardPass(X_test)
-    def predict_score(self, pred, y):
-        acc = accuracy_score(pred, y)
-        f1 = f1_score(pred, y, zero_division=0)
-        mcc = matthews_corrcoef(pred, y)
-        scoring = 0.3 * acc + 0.35 * f1 + 0.35 * mcc
-        
-        return scoring
+
 # Decision Tree Classifier
 class TreeNode:
     def __init__(self, data, depth):
@@ -538,8 +526,7 @@ class DecisionTreeClassifier:
         if new_score <= original_score:
             node.attr = temp_attr
         else:
-            pass
-            #print(f'Pruned node: {node.feature} {node.threshold}')    
+            print(f'Pruned node: {node.feature} {node.threshold}')    
         # Continue pruning children if not leaf
         if node.attr != 'leaf':
             self.prune_node(node.left, validation_X, validation_y)
@@ -550,7 +537,7 @@ class KNearestNeighborClassifier(Classifier):
     def __init__(self, k=31, distance_metric='manhattan'): 
         self.k = k
         self.distance_metric = distance_metric
-        #print('Method:', self.distance_metric, 'K:', self.k)
+        print('Method:', self.distance_metric, 'K:', self.k)
     def _cal_distace(self, x1, x2):
         distance = 0
         for i in range(len(x1)):

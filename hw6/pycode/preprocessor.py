@@ -95,6 +95,6 @@ class Preprocessor:
     def preprocess(self):
         # Preprocess the DataFrame
         self.booleanize()
-        #self.standardize()
+        self.standardize()
         return self.df
     

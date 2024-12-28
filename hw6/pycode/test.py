@@ -4,14 +4,24 @@ from preprocessor import Preprocessor
 from model.meta_learner import StackingClassifier
 from model.base_learner import LogisticRegressionClassifier, MLPClassifier,   \
                 DecisionTreeClassifier, KNearestNeighborClassifier,     \
-                NaiveBayesClassifier, activation, optimizer
+                NaiveBayesClassifier
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.metrics import accuracy_score, f1_score, matthews_corrcoef
 from tqdm import tqdm
 import os
 
+from sklearn import model_selection
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB 
+from sklearn.ensemble import RandomForestClassifier
+from model.meta import StackingClassifier
+import numpy as np
+import warnings
 
-def dataPreprocessing(threshold=0.11, root_path="./final_proj_data"):
+warnings.simplefilter('ignore')
+
+def dataPreprocessing(threshold=0.1, root_path="./final_proj_data"):
     
     train_X = os.path.join(root_path, "train_x.csv")
     train_y = os.path.join(root_path, "train_y.csv")
@@ -35,7 +45,7 @@ def dataPreprocessing(threshold=0.11, root_path="./final_proj_data"):
 
     train_data = train_data[selected_column]
     # balance the data
-    train_data = Preprocessor(train_data).oversample_minority_class()
+    #train_data = Preprocessor(train_data).oversample_minority_class()
     
     # train data
     train_X = train_data.drop(columns=['label'])
@@ -56,7 +66,6 @@ def dataPreprocessing(threshold=0.11, root_path="./final_proj_data"):
     
     
     return train_X, train_y, test_X # train, test data should be numpy array
-
 def KFold_cross_validation(X, y, n, model):
     fold_size = len(X) // n
     data = pd.concat([X, y], axis=1)
@@ -76,8 +85,8 @@ def KFold_cross_validation(X, y, n, model):
         X_train, y_train = train_data.iloc[:,:-1], pd.DataFrame(train_data.iloc[:,-1])
         X_val, y_val = val_data.iloc[:,:-1], val_data.iloc[:,-1]
         
-        kfold_model = model
-        kfold_model.fit(X_train, y_train)
+        
+        model.fit(X_train, y_train)
         y_pred = model.predict(X_val)
         scores['accuracy'].append(accuracy_score(y_val, y_pred))
         scores['f1'].append(f1_score(y_val, y_pred))
@@ -93,62 +102,44 @@ def KFold_cross_validation(X, y, n, model):
     print('\n')
     return scores
 
-def check(model):
-    X, y, test_X = dataPreprocessing(0.11, "./proj2_data")
-    test_y = pd.read_csv("./proj2_data/test_y.csv")
-    pred = model.predict(test_X)
-    print(pred)
-    scoring = model.predict_score(pred, test_y['label'].values)
-    print(f'Scoring: {scoring:.5f}\n')
+
 
 
 def main():
-    X, y, test_X = dataPreprocessing(0.11, "./final_proj_data")
+    X, y, test_X = dataPreprocessing(0.1, "./final_proj_data")
     
     # split the training data into training and validation data
     total = len(X)
     train_size = int(total * 0.8)
     train_X, val_X = X[:train_size], X[train_size:]
     train_y, val_y = y[:train_size], y[train_size:]
-    base_learners = [
-        ('logistic_regression', LogisticRegressionClassifier()),
-        ('decision_tree', DecisionTreeClassifier()),
-        ('knn', KNearestNeighborClassifier()),
-        ('naive_bayes', NaiveBayesClassifier()),
-        ('mlp', MLPClassifier(layers= [20,10], activate_function=activation.sigmoid, activate_derivative=activation.sigmoid_derivative, optimizer=optimizer.Adam, learning_rate=0.005, n_epoch = 10000))
-    ]
-    #KFold_cross_validation(train_X, train_y, 10, base_learners[4][1])
-    #'''
-    kfold_model = StackingClassifier()
-    KFold_cross_validation(X, y, 10, kfold_model)
-    for learner in base_learners:
-        print(f"Training base learner: {learner[0]}")
-        KFold_cross_validation(train_X, train_y, 10, learner[1])
-        #model = learner[1]
-        #model.fit(X,y)
-        #check(model)
-    '''
-    model = StackingClassifier()
-    #model.fit(X, y)
-    #check(model)
+
+    #kfold_model = StackingClassifier()
+    #KFold_cross_validation(train_X, train_y, 5, kfold_model)
     
 
-    model.fit(train_X,train_y)
-    
-    pred = model.predict(val_X)
-    print(pred)
-    scoring = model.predict_score(pred, val_y.values)
+    clf1 = KNeighborsClassifier(n_neighbors=1)
+    clf2 = RandomForestClassifier(random_state=1)
+    clf3 = GaussianNB()
+    lr = LogisticRegression()
 
+    print('3-fold cross validation:\n')
+
+    
+    model = StackingClassifier(base_learners=[clf1, clf2, clf3], 
+                            meta_learner=lr)
+    model.fit(X, y)
+
+    test_y = pd.read_csv("./final_proj_data/test_y.csv")
+    pred = model.predict(test_X)
+    scoring = model.predict_score(pred, test_y['label'].values)
     print(f'Scoring: {scoring:.5f}\n')
-    check(model)
-    '''
-    
     # TODO 
     # build your Stacking model
     # predict the output of the testing data
     # remember to paste the result of K-fold CV to your report
     # remember to save the predict label as .csv file
-    
+
 
 if __name__ == "__main__":
     np.random.seed(0)

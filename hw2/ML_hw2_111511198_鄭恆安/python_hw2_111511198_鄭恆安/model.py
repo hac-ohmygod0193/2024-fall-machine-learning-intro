@@ -1,6 +1,6 @@
 import numpy as np
 from abc import ABC, abstractmethod
-
+import pandas as pd
 # ====== Activation funtion ====== #
 class activation:
     def __init__(self):
@@ -9,6 +9,8 @@ class activation:
     @staticmethod
     def sigmoid(x):
         """ The sigmoid function """
+        print(type(x))
+        x = np.array(x)  # Ensure x is a numpy array
         return 1.0 / (1.0 + np.exp(-x))
     
     @staticmethod
@@ -88,7 +90,7 @@ class Classifier(ABC):
     
   
 class MLPClassifier(Classifier):
-    def __init__(self, layers=[10, 3], activate_function=activation.sigmoid, activate_derivative=activation.sigmoid_derivative, optimizer=optimizer.Adam, learning_rate=0.05, n_epoch=10000):
+    def __init__(self, layers= [20,10] , activate_function=activation.sigmoid, activate_derivative=activation.sigmoid_derivative, optimizer=optimizer.Adam, learning_rate=0.05, n_epoch = 100000):
         self.hidden_layers = layers
         self.activate_function = activate_function
         self.activate_derivative = activate_derivative
@@ -157,6 +159,9 @@ class MLPClassifier(Classifier):
         return loss
     def fit(self, X_train, y_train):
         """ Fit method for MLP, call it to train your MLP model """
+        if(isinstance(X_train, pd.DataFrame)):
+            X_train = X_train.values
+            y_train = y_train.values
         data_len = X_train.shape[0]
         # Split the data into training and validation sets
         split = int(data_len * 0.8)
@@ -202,9 +207,9 @@ class MLPClassifier(Classifier):
                 self.loss.append(loss)
             if(epoch%(self.n_epoch/5)==0):
                 self.learning_rate*=0.9
-            if(epoch%(self.n_epoch/10)==0):
-                print(f'Epoch {epoch + 1}/{self.n_epoch}, Loss: {loss}, Val Loss: {val_loss if X_val is not None else "N/A"}')
-            
+            #if(epoch%(self.n_epoch/10)==0):
+                #print(f'Epoch {epoch + 1}/{self.n_epoch}, Loss: {loss}, Val Loss: {val_loss if X_val is not None else "N/A"}')
+                
             # Backward pass
             self.backwardPass(y_train)
             
