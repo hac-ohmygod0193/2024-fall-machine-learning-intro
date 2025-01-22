@@ -143,7 +143,6 @@ class NaiveBayesClassifier(Classifier):
                     '''
                     class_prob += self.log_likelihood(x, mean, var)
             if self.mode == 'discrete' or self.mode == 'mixed':
-
                 # Calculate likelihood for categorical features
                 for feature in self.categorical_features:
                     for idx in range(len(X)):

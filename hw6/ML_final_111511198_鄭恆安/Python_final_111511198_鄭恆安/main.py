@@ -112,8 +112,8 @@ def main():
 
     kfold_scores = {}
     kfold_model = StackingClassifier(base_learners)
-    scores = KFold_cross_validation(X, y, 10, kfold_model)
-    kfold_scores['stacking'] = scores
+    #scores = KFold_cross_validation(X, y, 10, kfold_model)
+    #kfold_scores['stacking'] = scores
     model = StackingClassifier(base_learners)
     model.fit(train_X, train_y)
 
